@@ -27,7 +27,6 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     supports_timezones = False
     requires_explicit_null_ordering_when_grouping = True
     allows_auto_pk_0 = False
-    uses_savepoints = True
     can_release_savepoints = True
     atomic_transactions = False
     supports_column_check_constraints = False
@@ -65,6 +64,17 @@ class DatabaseFeatures(BaseDatabaseFeatures):
         with self.connection.cursor() as cursor:
             cursor.execute("SELECT 1 FROM mysql.time_zone LIMIT 1")
             return cursor.fetchone() is not None
+
+    @cached_property
+    def uses_savepoints(self):
+        """
+        All storage engines except NDB/NDBCLUSTER support savepoints.
+        But allow the user to overwrite explicitly if some new engine got used.
+        """
+        if self.connection.settings_dict.get('USES_SAVEPOINTS', None) is None:
+            return self._mysql_storage_engine.lower() not in ('ndbcluster', 'ndb')
+        else:
+            return self.connection.settings_dict.get['USES_SAVEPOINTS']
 
     def introspected_boolean_field_type(self, *args, **kwargs):
         return 'IntegerField'
